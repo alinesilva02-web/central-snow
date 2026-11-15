@@ -5,7 +5,8 @@ export async function criarEncomenda(
   produto: string,
   personagem: string,
   tamanho: string,
-  quantidade: number
+  quantidade: number,
+  foto_url?: string
 ) {
   const { data, error } = await supabase
     .from("encomendas")
@@ -16,6 +17,7 @@ export async function criarEncomenda(
         personagem,
         tamanho,
         quantidade,
+        foto_url,
       },
     ]);
 
@@ -28,17 +30,67 @@ export async function criarEncomenda(
 }
 
 export async function listarEncomendas() {
-  const { data, error } = await supabase
-    .from("encomendas")
-    .select("*")
-    .order("created_at", {
-      ascending: false,
-    });
+    const { data, error } = await supabase
+        .from("encomendas")
+        .select("*")
+        .order("created_at", {
+            ascending: false,
+        });
 
-  if (error) {
-    console.error(error);
-    throw error;
-  }
+    if (error) {
+        console.error(error);
+        throw error;
+    }
 
-  return data;
+    return data;
+}
+
+export async function atualizarStatus(
+    id: string,
+    status: string
+) {
+    const { error } = await supabase
+        .from("encomendas")
+        .update({
+            status,
+        })
+        .eq("id", id);
+
+    if (error) {
+        console.error(error);
+        throw error;
+    }
+}
+
+export async function contarEncomendas() {
+    const { count, error } = await supabase
+        .from("encomendas")
+        .select("*", {
+            count: "exact",
+            head: true,
+        });
+
+    if (error) {
+        throw error;
+    }
+
+    return count || 0;
+}
+
+export async function listarEncomendasPorCliente(
+    clienteId: string
+) {
+    const { data, error } = await supabase
+        .from("encomendas")
+        .select("*")
+        .eq("cliente_id", clienteId)
+        .order("created_at", {
+            ascending: false,
+        });
+
+    if (error) {
+        throw error;
+    }
+
+    return data;
 }

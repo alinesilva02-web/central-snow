@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import {
   criarEncomenda,
   listarEncomendas,
+  atualizarStatus,
 } from "../../lib/encomendas";
 
 import {
@@ -19,6 +20,9 @@ export default function EncomendasPage() {
   const [personagem, setPersonagem] = useState("");
   const [tamanho, setTamanho] = useState("");
   const [quantidade, setQuantidade] = useState(1);
+
+  const [statusSelecionado, setStatusSelecionado] =
+    useState<Record<string, string>>({});
 
   useEffect(() => {
     carregarClientes();
@@ -37,7 +41,20 @@ export default function EncomendasPage() {
   async function carregarEncomendas() {
     try {
       const dados = await listarEncomendas();
+
       setEncomendas(dados || []);
+
+      const statusInicial: Record<
+        string,
+        string
+      > = {};
+
+      (dados || []).forEach((item) => {
+        statusInicial[item.id] =
+          item.status || "recebido";
+      });
+
+      setStatusSelecionado(statusInicial);
     } catch (error) {
       console.error(error);
     }
@@ -53,7 +70,9 @@ export default function EncomendasPage() {
         quantidade
       );
 
-      alert("Encomenda salva com sucesso!");
+      alert(
+        "Encomenda salva com sucesso!"
+      );
 
       setClienteId("");
       setProduto("");
@@ -64,7 +83,44 @@ export default function EncomendasPage() {
       await carregarEncomendas();
     } catch (error) {
       console.error(error);
-      alert("Erro ao salvar encomenda");
+
+      alert(
+        "Erro ao salvar encomenda"
+      );
+    }
+  }
+
+  async function salvarStatus(
+    id: string
+  ) {
+    const novoStatus =
+      statusSelecionado[id];
+
+    const confirmar = window.confirm(
+      `Deseja realmente alterar o status para "${novoStatus}"?`
+    );
+
+    if (!confirmar) {
+      return;
+    }
+
+    try {
+      await atualizarStatus(
+        id,
+        novoStatus
+      );
+
+      alert(
+        "Status atualizado com sucesso!"
+      );
+
+      await carregarEncomendas();
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        "Erro ao atualizar status"
+      );
     }
   }
 
@@ -133,7 +189,9 @@ export default function EncomendasPage() {
           className="border rounded p-3 w-full mb-3"
           value={quantidade}
           onChange={(e) =>
-            setQuantidade(Number(e.target.value))
+            setQuantidade(
+              Number(e.target.value)
+            )
           }
         />
 
@@ -151,15 +209,26 @@ export default function EncomendasPage() {
         Encomendas Cadastradas
       </h2>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {encomendas.map((encomenda) => (
           <div
             key={encomenda.id}
             className="border p-4 rounded-xl"
           >
-            <h3 className="font-bold">
+            <h3 className="font-bold text-lg">
               📦 {encomenda.produto}
             </h3>
+
+            <p>
+              👤 {
+                clientes.find(
+                  (cliente) =>
+                    cliente.id ===
+                    encomenda.cliente_id
+                )?.nome ||
+                "Cliente não encontrado"
+              }
+            </p>
 
             <p>
               🎀 {encomenda.personagem}
@@ -173,9 +242,71 @@ export default function EncomendasPage() {
               🔢 {encomenda.quantidade}
             </p>
 
-            <p>
-              📋 {encomenda.status}
+            <p className="mt-2">
+              Status Atual:
+              <strong>
+                {" "}
+                {encomenda.status ||
+                  "recebido"}
+              </strong>
             </p>
+
+            <div className="mt-3 flex gap-3 items-center">
+              <select
+                className="border rounded p-2"
+                value={
+                  statusSelecionado[
+                    encomenda.id
+                  ] || "recebido"
+                }
+                onChange={(e) =>
+                  setStatusSelecionado({
+                    ...statusSelecionado,
+                    [encomenda.id]:
+                      e.target.value,
+                  })
+                }
+              >
+                <option value="recebido">
+                  📥 Recebido
+                </option>
+
+                <option value="procurando">
+                  🔍 Procurando
+                </option>
+
+                <option value="encontrado">
+                  ✅ Encontrado
+                </option>
+
+                <option value="comprado">
+                  💳 Comprado
+                </option>
+
+                <option value="transito">
+                  🚚 Em trânsito
+                </option>
+
+                <option value="chegou">
+                  📦 Chegou
+                </option>
+
+                <option value="entregue">
+                  🎉 Entregue
+                </option>
+              </select>
+
+              <button
+                onClick={() =>
+                  salvarStatus(
+                    encomenda.id
+                  )
+                }
+                className="bg-green-500 text-white px-4 py-2 rounded"
+              >
+                💾 Salvar Status
+              </button>
+            </div>
           </div>
         ))}
       </div>
