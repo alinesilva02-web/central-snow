@@ -30,8 +30,8 @@ export default function RootLayout({
             📦 Encomendas
           </Link>
 
-                    <Link href="/encomendas">
-            ❄️ Dashboard
+          <Link href="/dashboard">
+            ❄️ Dashboards
           </Link>
         </nav>
         

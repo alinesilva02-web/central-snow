@@ -24,3 +24,19 @@ export async function criarCliente(
 
   return data;
 }
+
+export async function listarClientes() {
+  const { data, error } = await supabase
+    .from("clientes")
+    .select("*")
+    .order("created_at", {
+      ascending: false,
+    });
+
+  if (error) {
+    console.error(error);
+    throw error;
+  }
+
+  return data;
+}

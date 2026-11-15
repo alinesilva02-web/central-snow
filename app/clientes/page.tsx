@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { criarCliente } from "../../lib/clientes";
+import { useState, useEffect } from "react";
+import {
+  criarCliente,
+  listarClientes,
+} from "../../lib/clientes";
 
 export default function ClientesPage() {
   const [nome, setNome] = useState("");
@@ -9,27 +12,43 @@ export default function ClientesPage() {
   const [tiktok, setTiktok] = useState("");
   const [observacoes, setObservacoes] = useState("");
 
-async function salvarCliente() {
-  try {
-    await criarCliente(
-      nome,
-      whatsapp,
-      tiktok,
-      observacoes
-    );
+  const [clientes, setClientes] = useState<any[]>([]);
 
-    alert("Cliente salvo com sucesso!");
+  useEffect(() => {
+    carregarClientes();
+  }, []);
 
-    setNome("");
-    setWhatsapp("");
-    setTiktok("");
-    setObservacoes("");
-
-  } catch (error) {
-    console.error(error);
-    alert("Erro ao salvar cliente");
+  async function carregarClientes() {
+    try {
+      const dados = await listarClientes();
+      setClientes(dados || []);
+    } catch (error) {
+      console.error(error);
+    }
   }
-}
+
+  async function salvarCliente() {
+    try {
+      await criarCliente(
+        nome,
+        whatsapp,
+        tiktok,
+        observacoes
+      );
+
+      alert("Cliente salvo com sucesso!");
+
+      setNome("");
+      setWhatsapp("");
+      setTiktok("");
+      setObservacoes("");
+
+      await carregarClientes();
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao salvar cliente");
+    }
+  }
 
   return (
     <main className="p-10">
@@ -67,7 +86,9 @@ async function salvarCliente() {
           className="border rounded p-3 w-full mb-3"
           placeholder="Observações"
           value={observacoes}
-          onChange={(e) => setObservacoes(e.target.value)}
+          onChange={(e) =>
+            setObservacoes(e.target.value)
+          }
         />
 
         <button
@@ -76,6 +97,35 @@ async function salvarCliente() {
         >
           Salvar Cliente
         </button>
+      </div>
+
+      <hr className="my-8" />
+
+      <h2 className="text-2xl font-bold mb-4">
+        Clientes Cadastrados
+      </h2>
+
+      <div className="space-y-3">
+        {clientes.map((cliente) => (
+          <div
+            key={cliente.id}
+            className="border p-4 rounded-xl"
+          >
+            <h3 className="font-bold">
+              {cliente.nome}
+            </h3>
+
+            <p>
+              📱 {cliente.whatsapp}
+            </p>
+
+            {cliente.tiktok && (
+              <p>
+                🎵 {cliente.tiktok}
+              </p>
+            )}
+          </div>
+        ))}
       </div>
     </main>
   );
