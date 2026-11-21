@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 
 import {
   buscarCliente,
+  type Cliente,
 } from "../../../lib/clientes";
 
 import {
   listarEncomendasPorCliente,
+  type Encomenda,
 } from "../../../lib/encomendas";
 
 export default function ClientePage({
@@ -16,27 +18,27 @@ export default function ClientePage({
   params: { id: string };
 }) {
   const [cliente, setCliente] =
-    useState<any>(null);
+    useState<Cliente | null>(null);
 
   const [encomendas, setEncomendas] =
-    useState<any[]>([]);
+    useState<Encomenda[]>([]);
 
   useEffect(() => {
-    carregarDados();
-  }, []);
+    async function carregarDados() {
+      const dadosCliente =
+        await buscarCliente(params.id);
 
-  async function carregarDados() {
-    const dadosCliente =
-      await buscarCliente(params.id);
+      const dadosEncomendas =
+        await listarEncomendasPorCliente(
+          params.id
+        );
 
-    const dadosEncomendas =
-      await listarEncomendasPorCliente(
-        params.id
-      );
+      setCliente(dadosCliente);
+      setEncomendas(dadosEncomendas);
+    }
 
-    setCliente(dadosCliente);
-    setEncomendas(dadosEncomendas);
-  }
+    void carregarDados();
+  }, [params.id]);
 
   if (!cliente) {
     return (

@@ -4,8 +4,14 @@ import { useState, useEffect } from "react";
 import {
   criarCliente,
   listarClientes,
+  atualizarCliente,
+  excluirCliente,
+  type Cliente,
 } from "../../lib/clientes";
-import { listarEncomendas } from "../../lib/encomendas";
+import {
+  listarEncomendas,
+  type Encomenda,
+} from "../../lib/encomendas";
 
 export default function ClientesPage() {
   const [nome, setNome] = useState("");
@@ -13,12 +19,18 @@ export default function ClientesPage() {
   const [tiktok, setTiktok] = useState("");
   const [observacoes, setObservacoes] = useState("");
 
-  const [clientes, setClientes] = useState<any[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [busca, setBusca] = useState("");
-  const [encomendas, setEncomendas] = useState<any[]>([]);
+  const [encomendas, setEncomendas] = useState<Encomenda[]>([]);
   const [clienteExpandido, setClienteExpandido] = useState<string | null>(null);
   const [carregandoEncomendas, setCarregandoEncomendas] = useState(true);
   const [erroEncomendas, setErroEncomendas] = useState<string | null>(null);
+  const [clienteEditando, setClienteEditando] = useState<string | null>(null);
+  const [nomeEdicao, setNomeEdicao] = useState("");
+  const [whatsappEdicao, setWhatsappEdicao] = useState("");
+  const [tiktokEdicao, setTiktokEdicao] = useState("");
+  const [observacoesEdicao, setObservacoesEdicao] = useState("");
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
 
   useEffect(() => {
     carregarClientes();
@@ -50,6 +62,11 @@ export default function ClientesPage() {
   }
 
   async function salvarCliente() {
+    if (!nome.trim()) {
+      alert("Informe o nome do cliente.");
+      return;
+    }
+
     try {
       await criarCliente(
         nome,
@@ -69,6 +86,87 @@ export default function ClientesPage() {
     } catch (error) {
       console.error(error);
       alert("Erro ao salvar cliente");
+    }
+  }
+
+  function iniciarEdicao(cliente: Cliente) {
+    setClienteEditando(cliente.id);
+    setNomeEdicao(cliente.nome);
+    setWhatsappEdicao(cliente.whatsapp);
+    setTiktokEdicao(cliente.tiktok || "");
+    setObservacoesEdicao(cliente.observacoes || "");
+  }
+
+  function cancelarEdicao() {
+    setClienteEditando(null);
+    setNomeEdicao("");
+    setWhatsappEdicao("");
+    setTiktokEdicao("");
+    setObservacoesEdicao("");
+  }
+
+  async function salvarEdicao(id: string) {
+    if (!nomeEdicao.trim()) {
+      alert("Informe o nome do cliente.");
+      return;
+    }
+
+    setSalvandoEdicao(true);
+
+    try {
+      await atualizarCliente(
+        id,
+        nomeEdicao.trim(),
+        whatsappEdicao.trim(),
+        tiktokEdicao.trim(),
+        observacoesEdicao.trim()
+      );
+
+      alert("Cliente atualizado com sucesso!");
+      cancelarEdicao();
+      await carregarClientes();
+    } catch (error) {
+      console.error(error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar cliente"
+      );
+    } finally {
+      setSalvandoEdicao(false);
+    }
+  }
+
+  async function removerCliente(cliente: Cliente) {
+    const quantidadeEncomendas = encomendas.filter(
+      (encomenda) => encomenda.cliente_id === cliente.id
+    ).length;
+
+    const avisoEncomendas =
+      quantidadeEncomendas > 0
+        ? ` O cliente possui ${quantidadeEncomendas} encomenda(s).`
+        : "";
+
+    const confirmar = window.confirm(
+      `Deseja excluir permanentemente o cliente "${cliente.nome}"?${avisoEncomendas}`
+    );
+
+    if (!confirmar) {
+      return;
+    }
+
+    try {
+      await excluirCliente(cliente.id);
+      alert("Cliente excluído com sucesso!");
+      await carregarClientes();
+      await carregarEncomendas();
+    } catch (error) {
+      console.error(error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Erro ao excluir cliente"
+      );
     }
   }
 
@@ -160,45 +258,104 @@ export default function ClientesPage() {
               key={cliente.id}
               className="border p-4 rounded-xl"
             >
-              <h3 className="font-bold">
-                👤 {cliente.nome}
-              </h3>
+              {clienteEditando === cliente.id ? (
+                <div className="space-y-3">
+                  <input
+                    className="w-full rounded border p-3"
+                    placeholder="Nome"
+                    value={nomeEdicao}
+                    onChange={(event) => setNomeEdicao(event.target.value)}
+                  />
+                  <input
+                    className="w-full rounded border p-3"
+                    placeholder="WhatsApp"
+                    value={whatsappEdicao}
+                    onChange={(event) => setWhatsappEdicao(event.target.value)}
+                  />
+                  <input
+                    className="w-full rounded border p-3"
+                    placeholder="TikTok"
+                    value={tiktokEdicao}
+                    onChange={(event) => setTiktokEdicao(event.target.value)}
+                  />
+                  <textarea
+                    className="w-full rounded border p-3"
+                    placeholder="Observações"
+                    value={observacoesEdicao}
+                    onChange={(event) => setObservacoesEdicao(event.target.value)}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={salvandoEdicao}
+                      onClick={() => salvarEdicao(cliente.id)}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {salvandoEdicao ? "Salvando..." : "Salvar alterações"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={salvandoEdicao}
+                      onClick={cancelarEdicao}
+                      className="rounded-lg bg-slate-200 px-4 py-2 font-semibold text-slate-800"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h3 className="font-bold">
+                    👤 {cliente.nome}
+                  </h3>
 
-              <p>
-                📱 {cliente.whatsapp}
-              </p>
+                  <p>📱 {cliente.whatsapp}</p>
 
-              {cliente.tiktok && (
-                <p>
-                  🎵 {cliente.tiktok}
-                </p>
+                  {cliente.tiktok && (
+                    <p>🎵 {cliente.tiktok}</p>
+                  )}
+
+                  {cliente.observacoes && (
+                    <p>📝 {cliente.observacoes}</p>
+                  )}
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      aria-expanded={clienteExpandido === cliente.id}
+                      aria-controls={`encomendas-${cliente.id}`}
+                      onClick={() =>
+                        setClienteExpandido(
+                          clienteExpandido === cliente.id
+                            ? null
+                            : cliente.id
+                        )
+                      }
+                      className="rounded-lg bg-sky-100 px-4 py-2 font-semibold"
+                    >
+                      {clienteExpandido === cliente.id
+                        ? "Ocultar encomendas"
+                        : carregandoEncomendas || erroEncomendas
+                          ? "Ver encomendas"
+                          : `Ver encomendas (${encomendasDoCliente.length})`}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => iniciarEdicao(cliente)}
+                      className="rounded-lg bg-amber-100 px-4 py-2 font-semibold text-amber-900"
+                    >
+                      Alterar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removerCliente(cliente)}
+                      className="rounded-lg bg-rose-100 px-4 py-2 font-semibold text-rose-800"
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </>
               )}
-
-              {cliente.observacoes && (
-                <p>
-                  📝 {cliente.observacoes}
-                </p>
-              )}
-
-              <button
-                type="button"
-                aria-expanded={clienteExpandido === cliente.id}
-                aria-controls={`encomendas-${cliente.id}`}
-                onClick={() =>
-                  setClienteExpandido(
-                    clienteExpandido === cliente.id
-                      ? null
-                      : cliente.id
-                  )
-                }
-                className="mt-3 rounded-lg bg-sky-100 px-4 py-2 font-semibold"
-              >
-                {clienteExpandido === cliente.id
-                  ? "Ocultar encomendas"
-                  : carregandoEncomendas || erroEncomendas
-                    ? "Ver encomendas"
-                    : `Ver encomendas (${encomendasDoCliente.length})`}
-              </button>
 
               {clienteExpandido === cliente.id && (
                 <div

@@ -1,5 +1,14 @@
 import { supabase } from "./supabase";
 
+export type Cliente = {
+  id: string;
+  nome: string;
+  whatsapp: string;
+  tiktok: string | null;
+  observacoes: string | null;
+  created_at?: string;
+};
+
 export async function criarCliente(
   nome: string,
   whatsapp: string,
@@ -72,4 +81,43 @@ export async function contarClientes() {
   }
 
   return count || 0;
+}
+
+export async function atualizarCliente(
+  id: string,
+  nome: string,
+  whatsapp: string,
+  tiktok: string,
+  observacoes: string
+) {
+  const { data, error } = await supabase
+    .from("clientes")
+    .update({
+      nome,
+      whatsapp,
+      tiktok,
+      observacoes,
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error(error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function excluirCliente(id: string) {
+  const { error } = await supabase
+    .from("clientes")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error(error);
+    throw error;
+  }
 }

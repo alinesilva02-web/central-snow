@@ -6,17 +6,19 @@ import {
   listarEncomendas,
   atualizarStatus,
   removerFotoEncomenda,
+  type Encomenda,
 } from "../../lib/encomendas";
 
 import {
   listarClientes,
+  type Cliente,
 } from "../../lib/clientes";
 
 import { excluirImagem, uploadImagem } from "../../lib/storage";
 
 export default function EncomendasPage() {
-  const [clientes, setClientes] = useState<any[]>([]);
-  const [encomendas, setEncomendas] = useState<any[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [encomendas, setEncomendas] = useState<Encomenda[]>([]);
 
   const [clienteId, setClienteId] = useState("");
   const [produto, setProduto] = useState("");
@@ -172,9 +174,14 @@ export default function EncomendasPage() {
 
   async function excluirFoto(encomenda: {
     id: string;
-    foto_url: string;
+    foto_url: string | null;
     produto: string;
   }) {
+    if (!encomenda.foto_url) {
+      alert("Esta encomenda não possui foto.");
+      return;
+    }
+
     const confirmar = window.confirm(
       `Deseja apagar permanentemente a foto da encomenda "${encomenda.produto}"?`
     );
@@ -402,7 +409,13 @@ export default function EncomendasPage() {
                 />
                 <button
                   type="button"
-                  onClick={() => excluirFoto(encomenda)}
+                  onClick={() =>
+                    excluirFoto({
+                      id: encomenda.id,
+                      foto_url: encomenda.foto_url,
+                      produto: encomenda.produto,
+                    })
+                  }
                   disabled={removendoFotoId === encomenda.id}
                   className="rounded-lg bg-rose-600 px-4 py-2 font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >

@@ -1,5 +1,17 @@
 import { supabase } from "./supabase";
 
+export type Encomenda = {
+  id: string;
+  cliente_id: string;
+  produto: string;
+  personagem: string | null;
+  tamanho: string | null;
+  quantidade: number;
+  status: string | null;
+  foto_url: string | null;
+  created_at?: string;
+};
+
 export async function criarEncomenda(
   cliente_id: string,
   produto: string,
