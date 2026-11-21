@@ -62,6 +62,20 @@ export async function atualizarStatus(
     }
 }
 
+export async function removerFotoEncomenda(id: string) {
+    const { error } = await supabase
+        .from("encomendas")
+        .update({
+            foto_url: null,
+        })
+        .eq("id", id);
+
+    if (error) {
+        console.error(error);
+        throw error;
+    }
+}
+
 export async function contarEncomendas() {
     const { count, error } = await supabase
         .from("encomendas")
