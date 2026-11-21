@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   CheckCircle2,
   CreditCard,
+  Ban,
   Inbox,
   Package,
   PackageCheck,
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const [transito, setTransito] = useState(0);
   const [chegou, setChegou] = useState(0);
   const [entregue, setEntregue] = useState(0);
+  const [cancelado, setCancelado] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
 
@@ -68,6 +70,9 @@ export default function DashboardPage() {
       setChegou(lista.filter((item) => item.status === "chegou").length);
       setEntregue(
         lista.filter((item) => item.status === "entregue").length
+      );
+      setCancelado(
+        lista.filter((item) => item.status === "cancelado").length
       );
     } catch (error) {
       console.error(error);
@@ -150,6 +155,14 @@ export default function DashboardPage() {
       cor: "text-rose-700",
       fundo: "bg-rose-50",
       borda: "border-rose-100",
+    },
+    {
+      titulo: "Canceladas",
+      valor: cancelado,
+      Icone: Ban,
+      cor: "text-slate-700",
+      fundo: "bg-slate-100",
+      borda: "border-slate-200",
     },
   ];
 

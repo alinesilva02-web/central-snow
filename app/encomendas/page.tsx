@@ -5,6 +5,7 @@ import {
   criarEncomenda,
   listarEncomendas,
   atualizarStatus,
+  excluirEncomenda,
   removerFotoEncomenda,
   type Encomenda,
 } from "../../lib/encomendas";
@@ -44,6 +45,10 @@ export default function EncomendasPage() {
 
   const [statusSelecionado, setStatusSelecionado] =
     useState<Record<string, string>>({});
+  const [filtroStatus, setFiltroStatus] = useState("todos");
+  const [filtroCliente, setFiltroCliente] = useState("todos");
+  const [excluindoEncomendaId, setExcluindoEncomendaId] =
+    useState<string | null>(null);
 
   useEffect(() => {
     carregarClientes();
@@ -178,6 +183,45 @@ export default function EncomendasPage() {
     }
   }
 
+  async function removerEncomenda(encomenda: Encomenda) {
+    const confirmar = window.confirm(
+      `Deseja excluir permanentemente a encomenda "${encomenda.produto}"?`
+    );
+
+    if (!confirmar) {
+      return;
+    }
+
+    setExcluindoEncomendaId(encomenda.id);
+
+    try {
+      await excluirEncomenda(encomenda.id);
+
+      let mensagem = "Encomenda excluída com sucesso.";
+      if (encomenda.foto_url) {
+        try {
+          await excluirImagem(encomenda.foto_url);
+        } catch (error) {
+          console.error(error);
+          mensagem =
+            "A encomenda foi excluída, mas não foi possível remover a foto.";
+        }
+      }
+
+      await carregarEncomendas();
+      alert(mensagem);
+    } catch (error) {
+      console.error(error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir a encomenda."
+      );
+    } finally {
+      setExcluindoEncomendaId(null);
+    }
+  }
+
   async function excluirFoto(encomenda: {
     id: string;
     foto_url: string | null;
@@ -255,6 +299,17 @@ export default function EncomendasPage() {
     setFotoUrl(url);
     return url;
   }
+
+  const encomendasFiltradas = encomendas.filter((encomenda) => {
+    const correspondeStatus =
+      filtroStatus === "todos" ||
+      (encomenda.status || "recebido") === filtroStatus;
+    const correspondeCliente =
+      filtroCliente === "todos" ||
+      encomenda.cliente_id === filtroCliente;
+
+    return correspondeStatus && correspondeCliente;
+  });
 
   return (
     <main className="p-10">
@@ -425,8 +480,56 @@ export default function EncomendasPage() {
         Encomendas Cadastradas
       </h2>
 
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        <div>
+          <label
+            htmlFor="filtro-status-encomendas"
+            className="mb-1 block font-medium text-slate-700"
+          >
+            Filtrar por status
+          </label>
+          <select
+            id="filtro-status-encomendas"
+            className="w-full rounded border p-3"
+            value={filtroStatus}
+            onChange={(event) => setFiltroStatus(event.target.value)}
+          >
+            <option value="todos">Todos os status</option>
+            <option value="recebido">Recebido</option>
+            <option value="procurando">Procurando</option>
+            <option value="encontrado">Encontrado</option>
+            <option value="comprado">Comprado</option>
+            <option value="transito">Em trânsito</option>
+            <option value="chegou">Chegou</option>
+            <option value="entregue">Entregue</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+        </div>
+        <div>
+          <label
+            htmlFor="filtro-cliente-encomendas"
+            className="mb-1 block font-medium text-slate-700"
+          >
+            Filtrar por cliente
+          </label>
+          <select
+            id="filtro-cliente-encomendas"
+            className="w-full rounded border p-3"
+            value={filtroCliente}
+            onChange={(event) => setFiltroCliente(event.target.value)}
+          >
+            <option value="todos">Todos os clientes</option>
+            {clientes.map((cliente) => (
+              <option key={cliente.id} value={cliente.id}>
+                {cliente.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="space-y-4">
-        {encomendas.map((encomenda) => (
+        {encomendasFiltradas.map((encomenda) => (
           <div
             key={encomenda.id}
             className="border p-4 rounded-xl"
@@ -551,6 +654,10 @@ export default function EncomendasPage() {
                 <option value="entregue">
                   🎉 Entregue
                 </option>
+
+                <option value="cancelado">
+                  ❌ Cancelado
+                </option>
               </select>
 
               <button
@@ -563,9 +670,28 @@ export default function EncomendasPage() {
               >
                 💾 Salvar Status
               </button>
+
+              <button
+                type="button"
+                onClick={() => removerEncomenda(encomenda)}
+                disabled={excluindoEncomendaId === encomenda.id}
+                className="rounded bg-rose-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {excluindoEncomendaId === encomenda.id
+                  ? "Excluindo..."
+                  : "Excluir encomenda"}
+              </button>
             </div>
           </div>
         ))}
+        {encomendas.length === 0 && (
+          <p>Não há encomendas cadastradas.</p>
+        )}
+        {encomendas.length > 0 && encomendasFiltradas.length === 0 && (
+          <p>
+            Nenhuma encomenda encontrada para os filtros selecionados.
+          </p>
+        )}
       </div>
     </main>
   );

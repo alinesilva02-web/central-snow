@@ -80,6 +80,25 @@ export async function atualizarStatus(
     }
 }
 
+export async function excluirEncomenda(id: string) {
+    const { data, error } = await supabase
+        .from("encomendas")
+        .delete()
+        .eq("id", id)
+        .select("id");
+
+    if (error) {
+        console.error(error);
+        throw error;
+    }
+
+    if (!data || data.length === 0) {
+        throw new Error(
+            "Não foi possível excluir a encomenda. Verifique as permissões da base de dados."
+        );
+    }
+}
+
 export async function removerFotoEncomenda(id: string) {
     const { error } = await supabase
         .from("encomendas")
