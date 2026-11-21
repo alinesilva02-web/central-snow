@@ -389,6 +389,19 @@ export default function ClientesPage() {
                             📏 Tamanho: {encomenda.tamanho || "Não informado"}
                           </p>
                           <p>🔢 Quantidade: {encomenda.quantidade}</p>
+                          <p>
+                            📅 Solicitação:{" "}
+                            {encomenda.data_solicitacao
+                              ? new Date(
+                                  `${encomenda.data_solicitacao}T00:00:00`
+                                ).toLocaleDateString("pt-BR")
+                              : "Não informada"}
+                          </p>
+                          {encomenda.observacoes && (
+                            <p className="whitespace-pre-wrap">
+                              📝 Observações: {encomenda.observacoes}
+                            </p>
+                          )}
                           <p>Status: {encomenda.status || "recebido"}</p>
                         </div>
                       ))}

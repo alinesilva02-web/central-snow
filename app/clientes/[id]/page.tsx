@@ -88,6 +88,21 @@ export default function ClientePage({
               </p>
 
               <p>
+                📅 Solicitação:{" "}
+                {encomenda.data_solicitacao
+                  ? new Date(
+                      `${encomenda.data_solicitacao}T00:00:00`
+                    ).toLocaleDateString("pt-BR")
+                  : "Não informada"}
+              </p>
+
+              {encomenda.observacoes && (
+                <p className="whitespace-pre-wrap">
+                  📝 Observações: {encomenda.observacoes}
+                </p>
+              )}
+
+              <p>
                 📋 {encomenda.status}
               </p>
             </div>

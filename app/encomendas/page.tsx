@@ -25,6 +25,8 @@ export default function EncomendasPage() {
   const [personagem, setPersonagem] = useState("");
   const [tamanho, setTamanho] = useState("");
   const [quantidade, setQuantidade] = useState(1);
+  const [observacoes, setObservacoes] = useState("");
+  const [dataSolicitacao, setDataSolicitacao] = useState("");
 
   const [arquivo, setArquivo] =
     useState<File | null>(null);
@@ -105,7 +107,9 @@ export default function EncomendasPage() {
         personagem,
         tamanho,
         quantidade,
-        urlFoto
+        urlFoto,
+        observacoes.trim(),
+        dataSolicitacao
       );
 
       alert(
@@ -117,6 +121,8 @@ export default function EncomendasPage() {
       setPersonagem("");
       setTamanho("");
       setQuantidade(1);
+      setObservacoes("");
+      setDataSolicitacao("");
       setArquivo(null);
       setFotoUrl("");
 
@@ -325,6 +331,35 @@ export default function EncomendasPage() {
           }
         />
 
+        <label
+          htmlFor="data-solicitacao"
+          className="mb-1 block font-medium text-slate-700"
+        >
+          Data da solicitação
+        </label>
+        <input
+          id="data-solicitacao"
+          type="date"
+          required
+          className="border rounded p-3 w-full mb-3"
+          value={dataSolicitacao}
+          onChange={(e) => setDataSolicitacao(e.target.value)}
+        />
+
+        <label
+          htmlFor="observacoes-encomenda"
+          className="mb-1 block font-medium text-slate-700"
+        >
+          Observações da encomenda
+        </label>
+        <textarea
+          id="observacoes-encomenda"
+          className="border rounded p-3 w-full mb-3"
+          placeholder="Observações ou detalhes solicitados pelo cliente"
+          value={observacoes}
+          onChange={(e) => setObservacoes(e.target.value)}
+        />
+
         <div className="mb-4 rounded-xl border border-dashed border-sky-300 bg-sky-50 p-4">
           <label
             htmlFor="foto-encomenda"
@@ -448,6 +483,21 @@ export default function EncomendasPage() {
             <p>
               🔢 {encomenda.quantidade}
             </p>
+
+            <p>
+              📅 Solicitação:{" "}
+              {encomenda.data_solicitacao
+                ? new Date(
+                    `${encomenda.data_solicitacao}T00:00:00`
+                  ).toLocaleDateString("pt-BR")
+                : "Não informada"}
+            </p>
+
+            {encomenda.observacoes && (
+              <p className="whitespace-pre-wrap">
+                📝 Observações: {encomenda.observacoes}
+              </p>
+            )}
 
             <p className="mt-2">
               Status Atual:

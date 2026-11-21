@@ -9,6 +9,8 @@ export type Encomenda = {
   quantidade: number;
   status: string | null;
   foto_url: string | null;
+  observacoes: string | null;
+  data_solicitacao: string | null;
   created_at?: string;
 };
 
@@ -18,7 +20,9 @@ export async function criarEncomenda(
   personagem: string,
   tamanho: string,
   quantidade: number,
-  foto_url?: string
+  foto_url: string | undefined,
+  observacoes: string,
+  data_solicitacao: string
 ) {
   const { data, error } = await supabase
     .from("encomendas")
@@ -30,6 +34,8 @@ export async function criarEncomenda(
         tamanho,
         quantidade,
         foto_url,
+        observacoes,
+        data_solicitacao,
       },
     ]);
 
