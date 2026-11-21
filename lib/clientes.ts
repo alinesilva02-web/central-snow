@@ -111,13 +111,42 @@ export async function atualizarCliente(
 }
 
 export async function excluirCliente(id: string) {
-  const { error } = await supabase
+  const { data: encomendas, error: erroEncomendas } = await supabase
+    .from("encomendas")
+    .select("id")
+    .eq("cliente_id", id);
+
+  if (erroEncomendas) {
+    console.error(erroEncomendas);
+    throw erroEncomendas;
+  }
+
+  if (encomendas && encomendas.length > 0) {
+    const { error: erroExcluirEncomendas } = await supabase
+      .from("encomendas")
+      .delete()
+      .eq("cliente_id", id);
+
+    if (erroExcluirEncomendas) {
+      console.error(erroExcluirEncomendas);
+      throw erroExcluirEncomendas;
+    }
+  }
+
+  const { data, error } = await supabase
     .from("clientes")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
 
   if (error) {
     console.error(error);
     throw error;
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error(
+      "Não foi possível excluir o cliente. Verifique as permissões da base de dados."
+    );
   }
 }

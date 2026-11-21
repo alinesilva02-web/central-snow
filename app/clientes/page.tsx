@@ -142,13 +142,10 @@ export default function ClientesPage() {
       (encomenda) => encomenda.cliente_id === cliente.id
     ).length;
 
-    const avisoEncomendas =
-      quantidadeEncomendas > 0
-        ? ` O cliente possui ${quantidadeEncomendas} encomenda(s).`
-        : "";
-
     const confirmar = window.confirm(
-      `Deseja excluir permanentemente o cliente "${cliente.nome}"?${avisoEncomendas}`
+      quantidadeEncomendas > 0
+        ? `Tem certeza que deseja excluir o cliente "${cliente.nome}"?\n\nTodas as ${quantidadeEncomendas} encomenda(s) vinculada(s) também serão excluídas permanentemente.`
+        : `Deseja excluir permanentemente o cliente "${cliente.nome}"?`
     );
 
     if (!confirmar) {
