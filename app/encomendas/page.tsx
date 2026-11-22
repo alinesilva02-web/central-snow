@@ -4,10 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import {
   criarEncomenda,
   listarEncomendas,
+  listarHistoricoStatus,
   atualizarEncomenda,
   atualizarStatus,
   excluirEncomenda,
   removerFotoEncomenda,
+  type HistoricoStatusEncomenda,
   type Encomenda,
 } from "../../lib/encomendas";
 
@@ -17,6 +19,7 @@ import {
 } from "../../lib/clientes";
 
 import { excluirImagem, uploadImagem } from "../../lib/storage";
+import { exportarCsv } from "../../lib/exportacao";
 
 export default function EncomendasPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -48,6 +51,9 @@ export default function EncomendasPage() {
     useState<Record<string, string>>({});
   const [filtroStatus, setFiltroStatus] = useState("todos");
   const [filtroCliente, setFiltroCliente] = useState("todos");
+  const [filtroProduto, setFiltroProduto] = useState("");
+  const [ordemDataSolicitacao, setOrdemDataSolicitacao] =
+    useState<"mais_nova" | "mais_antiga">("mais_nova");
   const [excluindoEncomendaId, setExcluindoEncomendaId] =
     useState<string | null>(null);
   const [encomendaEditandoId, setEncomendaEditandoId] =
@@ -60,6 +66,13 @@ export default function EncomendasPage() {
   const [observacoesEditando, setObservacoesEditando] = useState("");
   const [dataSolicitacaoEditando, setDataSolicitacaoEditando] = useState("");
   const [salvandoEdicaoId, setSalvandoEdicaoId] = useState<string | null>(null);
+  const [idsAtrasadas, setIdsAtrasadas] = useState<string[]>([]);
+  const [historicoAbertoId, setHistoricoAbertoId] = useState<string | null>(null);
+  const [historicos, setHistoricos] = useState<
+    Record<string, HistoricoStatusEncomenda[]>
+  >({});
+  const [carregandoHistoricoId, setCarregandoHistoricoId] =
+    useState<string | null>(null);
 
   useEffect(() => {
     carregarClientes();
@@ -80,6 +93,23 @@ export default function EncomendasPage() {
       const dados = await listarEncomendas();
 
       setEncomendas(dados || []);
+      const limiteAtraso = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      setIdsAtrasadas(
+        (dados || [])
+          .filter((item) => {
+            const status = item.status || "recebido";
+            const ultimaAtualizacao =
+              item.status_atualizado_em || item.created_at;
+
+            return (
+              status !== "entregue" &&
+              status !== "cancelado" &&
+              !!ultimaAtualizacao &&
+              Date.parse(ultimaAtualizacao) <= limiteAtraso
+            );
+          })
+          .map((item) => item.id)
+      );
 
       const statusInicial: Record<
         string,
@@ -192,6 +222,87 @@ export default function EncomendasPage() {
         "Erro ao atualizar status"
       );
     }
+  }
+
+  async function alternarHistorico(encomendaId: string) {
+    if (historicoAbertoId === encomendaId) {
+      setHistoricoAbertoId(null);
+      return;
+    }
+
+    setHistoricoAbertoId(encomendaId);
+    if (historicos[encomendaId]) {
+      return;
+    }
+
+    setCarregandoHistoricoId(encomendaId);
+    try {
+      const dados = await listarHistoricoStatus(encomendaId);
+      setHistoricos((atuais) => ({
+        ...atuais,
+        [encomendaId]: dados,
+      }));
+    } catch (error) {
+      console.error(error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível carregar o histórico."
+      );
+      setHistoricoAbertoId(null);
+    } finally {
+      setCarregandoHistoricoId(null);
+    }
+  }
+
+  function exportarEncomendas() {
+    exportarCsv(
+      `encomendas-${new Date().toISOString().slice(0, 10)}.csv`,
+      [
+        "Cliente",
+        "Produto",
+        "Personagem",
+        "Tamanho",
+        "Quantidade",
+        "Data da solicitação",
+        "Status",
+        "Última alteração de status",
+        "Observações",
+      ],
+      encomendas.map((encomenda) => [
+        clientes.find((cliente) => cliente.id === encomenda.cliente_id)?.nome ||
+          "Cliente não encontrado",
+        encomenda.produto,
+        encomenda.personagem,
+        encomenda.tamanho,
+        encomenda.quantidade,
+        encomenda.data_solicitacao,
+        encomenda.status || "recebido",
+        encomenda.status_atualizado_em,
+        encomenda.observacoes,
+      ])
+    );
+  }
+
+  function linkWhatsApp(encomenda: Encomenda) {
+    const cliente = clientes.find(
+      (item) => item.id === encomenda.cliente_id
+    );
+    if (!cliente) {
+      return null;
+    }
+
+    const numero = cliente.whatsapp.replace(/\D/g, "");
+    if (!numero) {
+      return null;
+    }
+
+    const numeroInternacional = numero.startsWith("55")
+      ? numero
+      : `55${numero}`;
+    const mensagem = `Olá, ${cliente.nome}! Sua encomenda "${encomenda.produto}" está com o status: ${encomenda.status || "recebido"}.`;
+
+    return `https://wa.me/${numeroInternacional}?text=${encodeURIComponent(mensagem)}`;
   }
 
   function iniciarEdicao(encomenda: Encomenda) {
@@ -384,8 +495,28 @@ export default function EncomendasPage() {
     const correspondeCliente =
       filtroCliente === "todos" ||
       encomenda.cliente_id === filtroCliente;
+    const correspondeProduto = encomenda.produto
+      .toLocaleLowerCase()
+      .includes(filtroProduto.trim().toLocaleLowerCase());
 
-    return correspondeStatus && correspondeCliente;
+    return correspondeStatus && correspondeCliente && correspondeProduto;
+  }).sort((a, b) => {
+    if (!a.data_solicitacao && !b.data_solicitacao) {
+      return 0;
+    }
+
+    if (!a.data_solicitacao) {
+      return 1;
+    }
+
+    if (!b.data_solicitacao) {
+      return -1;
+    }
+
+    const comparacao = a.data_solicitacao.localeCompare(b.data_solicitacao);
+    return ordemDataSolicitacao === "mais_nova"
+      ? -comparacao
+      : comparacao;
   });
 
   return (
@@ -553,11 +684,31 @@ export default function EncomendasPage() {
 
       <hr className="my-8" />
 
-      <h2 className="text-2xl font-bold mb-4">
-        Encomendas Cadastradas
-      </h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-bold">
+          Encomendas Cadastradas
+        </h2>
+        <button
+          type="button"
+          onClick={exportarEncomendas}
+          disabled={encomendas.length === 0}
+          className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Exportar encomendas CSV
+        </button>
+      </div>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+      {idsAtrasadas.length > 0 && (
+        <div
+          role="alert"
+          className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900"
+        >
+          Atenção: {idsAtrasadas.length} encomenda(s) estão sem atualização há
+          mais de 7 dias.
+        </div>
+      )}
+
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label
             htmlFor="filtro-status-encomendas"
@@ -603,6 +754,45 @@ export default function EncomendasPage() {
             ))}
           </select>
         </div>
+        <div>
+          <label
+            htmlFor="filtro-produto-encomendas"
+            className="mb-1 block font-medium text-slate-700"
+          >
+            Filtrar por produto
+          </label>
+          <input
+            id="filtro-produto-encomendas"
+            type="search"
+            className="w-full rounded border p-3"
+            placeholder="Digite o nome do produto"
+            value={filtroProduto}
+            onChange={(event) => setFiltroProduto(event.target.value)}
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="ordenar-data-solicitacao"
+            className="mb-1 block font-medium text-slate-700"
+          >
+            Ordenar por data da solicitação
+          </label>
+          <select
+            id="ordenar-data-solicitacao"
+            className="w-full rounded border p-3"
+            value={ordemDataSolicitacao}
+            onChange={(event) =>
+              setOrdemDataSolicitacao(
+                event.target.value === "mais_antiga"
+                  ? "mais_antiga"
+                  : "mais_nova"
+              )
+            }
+          >
+            <option value="mais_nova">Mais recentes primeiro</option>
+            <option value="mais_antiga">Mais antigas primeiro</option>
+          </select>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -614,6 +804,11 @@ export default function EncomendasPage() {
             <h3 className="font-bold text-lg">
               📦 {encomenda.produto}
             </h3>
+            {idsAtrasadas.includes(encomenda.id) && (
+              <p className="mt-1 inline-block rounded bg-amber-100 px-2 py-1 text-sm font-semibold text-amber-900">
+                Sem atualização há mais de 7 dias
+              </p>
+            )}
 
             {encomenda.foto_url && (
               <div className="my-3 flex flex-wrap items-center gap-3">
@@ -824,6 +1019,30 @@ export default function EncomendasPage() {
 
                 <button
                   type="button"
+                  onClick={() => alternarHistorico(encomenda.id)}
+                  disabled={carregandoHistoricoId === encomenda.id}
+                  className="rounded bg-slate-600 px-4 py-2 text-white disabled:opacity-50"
+                >
+                  {carregandoHistoricoId === encomenda.id
+                    ? "Carregando histórico..."
+                    : historicoAbertoId === encomenda.id
+                      ? "Ocultar histórico"
+                      : "Histórico de status"}
+                </button>
+
+                {linkWhatsApp(encomenda) && (
+                  <a
+                    href={linkWhatsApp(encomenda) || undefined}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded bg-green-700 px-4 py-2 text-white"
+                  >
+                    Avisar pelo WhatsApp
+                  </a>
+                )}
+
+                <button
+                  type="button"
                   onClick={() => removerEncomenda(encomenda)}
                   disabled={excluindoEncomendaId === encomenda.id}
                   className="rounded bg-rose-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
@@ -832,6 +1051,29 @@ export default function EncomendasPage() {
                     ? "Excluindo..."
                     : "Excluir encomenda"}
                 </button>
+              </div>
+            )}
+
+            {historicoAbertoId === encomenda.id && (
+              <div className="mt-4 rounded-lg bg-slate-50 p-4">
+                <h4 className="font-semibold">Histórico de status</h4>
+                {historicos[encomenda.id]?.length ? (
+                  <ol className="mt-3 space-y-2">
+                    {historicos[encomenda.id].map((item) => (
+                      <li key={item.id} className="text-sm text-slate-700">
+                        {item.status_anterior
+                          ? `${item.status_anterior} → ${item.status_novo}`
+                          : `Encomenda criada: ${item.status_novo}`}
+                        {" · "}
+                        {new Date(item.alterado_em).toLocaleString("pt-BR")}
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="mt-2 text-sm text-slate-600">
+                    Nenhum histórico disponível.
+                  </p>
+                )}
               </div>
             )}
           </div>

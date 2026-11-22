@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   CreditCard,
   Ban,
+  AlertTriangle,
   Inbox,
   Package,
   PackageCheck,
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const [chegou, setChegou] = useState(0);
   const [entregue, setEntregue] = useState(0);
   const [cancelado, setCancelado] = useState(0);
+  const [atrasadas, setAtrasadas] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(false);
 
@@ -74,6 +76,19 @@ export default function DashboardPage() {
       setCancelado(
         lista.filter((item) => item.status === "cancelado").length
       );
+      const limiteAtraso = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      setAtrasadas(
+        lista.filter((item) => {
+          const ultimaAtualizacao =
+            item.status_atualizado_em || item.created_at;
+          return (
+            item.status !== "entregue" &&
+            item.status !== "cancelado" &&
+            !!ultimaAtualizacao &&
+            Date.parse(ultimaAtualizacao) <= limiteAtraso
+          );
+        }).length
+      );
     } catch (error) {
       console.error(error);
       setErro(true);
@@ -96,6 +111,13 @@ export default function DashboardPage() {
       Icone: Package,
       cor: "text-indigo-700",
       fundo: "bg-indigo-100",
+    },
+    {
+      titulo: "Sem atualização há mais de 7 dias",
+      valor: atrasadas,
+      Icone: AlertTriangle,
+      cor: "text-amber-700",
+      fundo: "bg-amber-100",
     },
   ];
 
@@ -207,7 +229,7 @@ export default function DashboardPage() {
 
       <section
         aria-label="Resumo geral"
-        className="grid gap-4 sm:grid-cols-2"
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
       >
         {resumo.map(({ titulo, valor, Icone, cor, fundo }) => (
           <article

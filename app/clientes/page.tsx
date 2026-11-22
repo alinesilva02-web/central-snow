@@ -12,6 +12,7 @@ import {
   listarEncomendas,
   type Encomenda,
 } from "../../lib/encomendas";
+import { exportarCsv } from "../../lib/exportacao";
 
 export default function ClientesPage() {
   const [nome, setNome] = useState("");
@@ -174,6 +175,19 @@ export default function ClientesPage() {
         .includes(busca.toLowerCase())
   );
 
+  function exportarClientes() {
+    exportarCsv(
+      `clientes-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Nome", "WhatsApp", "TikTok", "Observações"],
+      clientes.map((cliente) => [
+        cliente.nome,
+        cliente.whatsapp,
+        cliente.tiktok,
+        cliente.observacoes,
+      ])
+    );
+  }
+
   return (
     <main className="p-10">
       <h1 className="text-4xl font-bold mb-6">
@@ -231,9 +245,19 @@ export default function ClientesPage() {
 
       <hr className="my-8" />
 
-      <h2 className="text-2xl font-bold mb-4">
-        Clientes Cadastrados
-      </h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-bold">
+          Clientes Cadastrados
+        </h2>
+        <button
+          type="button"
+          onClick={exportarClientes}
+          disabled={clientes.length === 0}
+          className="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Exportar clientes CSV
+        </button>
+      </div>
 
       <input
         className="border rounded p-3 w-full mb-5 max-w-xl"

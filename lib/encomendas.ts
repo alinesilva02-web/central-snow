@@ -11,7 +11,16 @@ export type Encomenda = {
   foto_url: string | null;
   observacoes: string | null;
   data_solicitacao: string | null;
+  status_atualizado_em?: string | null;
   created_at?: string;
+};
+
+export type HistoricoStatusEncomenda = {
+  id: number;
+  encomenda_id: string;
+  status_anterior: string | null;
+  status_novo: string;
+  alterado_em: string;
 };
 
 export async function criarEncomenda(
@@ -78,6 +87,21 @@ export async function atualizarStatus(
         console.error(error);
         throw error;
     }
+}
+
+export async function listarHistoricoStatus(encomendaId: string) {
+    const { data, error } = await supabase
+        .from("historico_status_encomendas")
+        .select("id, encomenda_id, status_anterior, status_novo, alterado_em")
+        .eq("encomenda_id", encomendaId)
+        .order("alterado_em", { ascending: true });
+
+    if (error) {
+        console.error(error);
+        throw error;
+    }
+
+    return data as HistoricoStatusEncomenda[];
 }
 
 export async function atualizarEncomenda(
