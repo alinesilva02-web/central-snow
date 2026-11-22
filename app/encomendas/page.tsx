@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   criarEncomenda,
   listarEncomendas,
+  atualizarEncomenda,
   atualizarStatus,
   excluirEncomenda,
   removerFotoEncomenda,
@@ -49,6 +50,16 @@ export default function EncomendasPage() {
   const [filtroCliente, setFiltroCliente] = useState("todos");
   const [excluindoEncomendaId, setExcluindoEncomendaId] =
     useState<string | null>(null);
+  const [encomendaEditandoId, setEncomendaEditandoId] =
+    useState<string | null>(null);
+  const [clienteEditandoId, setClienteEditandoId] = useState("");
+  const [produtoEditando, setProdutoEditando] = useState("");
+  const [personagemEditando, setPersonagemEditando] = useState("");
+  const [tamanhoEditando, setTamanhoEditando] = useState("");
+  const [quantidadeEditando, setQuantidadeEditando] = useState(1);
+  const [observacoesEditando, setObservacoesEditando] = useState("");
+  const [dataSolicitacaoEditando, setDataSolicitacaoEditando] = useState("");
+  const [salvandoEdicaoId, setSalvandoEdicaoId] = useState<string | null>(null);
 
   useEffect(() => {
     carregarClientes();
@@ -180,6 +191,72 @@ export default function EncomendasPage() {
       alert(
         "Erro ao atualizar status"
       );
+    }
+  }
+
+  function iniciarEdicao(encomenda: Encomenda) {
+    setEncomendaEditandoId(encomenda.id);
+    setClienteEditandoId(encomenda.cliente_id);
+    setProdutoEditando(encomenda.produto);
+    setPersonagemEditando(encomenda.personagem || "");
+    setTamanhoEditando(encomenda.tamanho || "");
+    setQuantidadeEditando(encomenda.quantidade);
+    setObservacoesEditando(encomenda.observacoes || "");
+    setDataSolicitacaoEditando(encomenda.data_solicitacao || "");
+  }
+
+  function cancelarEdicao() {
+    setEncomendaEditandoId(null);
+    setClienteEditandoId("");
+    setProdutoEditando("");
+    setPersonagemEditando("");
+    setTamanhoEditando("");
+    setQuantidadeEditando(1);
+    setObservacoesEditando("");
+    setDataSolicitacaoEditando("");
+  }
+
+  async function salvarEdicao(id: string) {
+    if (!clienteEditandoId || !produtoEditando.trim()) {
+      alert("Selecione um cliente e informe o produto.");
+      return;
+    }
+
+    if (!Number.isInteger(quantidadeEditando) || quantidadeEditando < 1) {
+      alert("A quantidade deve ser um número inteiro maior que zero.");
+      return;
+    }
+
+    if (!dataSolicitacaoEditando) {
+      alert("Informe a data da solicitação.");
+      return;
+    }
+
+    setSalvandoEdicaoId(id);
+
+    try {
+      await atualizarEncomenda(id, {
+        cliente_id: clienteEditandoId,
+        produto: produtoEditando.trim(),
+        personagem: personagemEditando.trim(),
+        tamanho: tamanhoEditando.trim(),
+        quantidade: quantidadeEditando,
+        observacoes: observacoesEditando.trim(),
+        data_solicitacao: dataSolicitacaoEditando,
+      });
+
+      cancelarEdicao();
+      await carregarEncomendas();
+      alert("Encomenda atualizada com sucesso.");
+    } catch (error) {
+      console.error(error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar a encomenda."
+      );
+    } finally {
+      setSalvandoEdicaoId(null);
     }
   }
 
@@ -611,77 +688,152 @@ export default function EncomendasPage() {
               </strong>
             </p>
 
-            <div className="mt-3 flex gap-3 items-center">
-              <select
-                className="border rounded p-2"
-                value={
-                  statusSelecionado[
-                  encomenda.id
-                  ] || "recebido"
-                }
-                onChange={(e) =>
-                  setStatusSelecionado({
-                    ...statusSelecionado,
-                    [encomenda.id]:
-                      e.target.value,
-                  })
-                }
-              >
-                <option value="recebido">
-                  📥 Recebido
-                </option>
+            {encomendaEditandoId === encomenda.id ? (
+              <div className="mt-4 space-y-3 rounded-xl bg-slate-50 p-4">
+                <h4 className="font-semibold">Alterar encomenda</h4>
+                <select
+                  aria-label="Cliente da encomenda"
+                  className="w-full rounded border p-3"
+                  value={clienteEditandoId}
+                  onChange={(event) =>
+                    setClienteEditandoId(event.target.value)
+                  }
+                >
+                  <option value="">Selecione um cliente</option>
+                  {clientes.map((cliente) => (
+                    <option key={cliente.id} value={cliente.id}>
+                      {cliente.nome}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  aria-label="Produto"
+                  className="w-full rounded border p-3"
+                  placeholder="Produto"
+                  value={produtoEditando}
+                  onChange={(event) => setProdutoEditando(event.target.value)}
+                />
+                <input
+                  aria-label="Personagem"
+                  className="w-full rounded border p-3"
+                  placeholder="Personagem"
+                  value={personagemEditando}
+                  onChange={(event) => setPersonagemEditando(event.target.value)}
+                />
+                <input
+                  aria-label="Tamanho"
+                  className="w-full rounded border p-3"
+                  placeholder="Tamanho"
+                  value={tamanhoEditando}
+                  onChange={(event) => setTamanhoEditando(event.target.value)}
+                />
+                <input
+                  aria-label="Quantidade"
+                  type="number"
+                  min="1"
+                  step="1"
+                  className="w-full rounded border p-3"
+                  value={quantidadeEditando}
+                  onChange={(event) =>
+                    setQuantidadeEditando(Number(event.target.value))
+                  }
+                />
+                <label
+                  htmlFor={`data-solicitacao-${encomenda.id}`}
+                  className="block font-medium text-slate-700"
+                >
+                  Data da solicitação
+                </label>
+                <input
+                  id={`data-solicitacao-${encomenda.id}`}
+                  type="date"
+                  className="w-full rounded border p-3"
+                  value={dataSolicitacaoEditando}
+                  onChange={(event) =>
+                    setDataSolicitacaoEditando(event.target.value)
+                  }
+                />
+                <textarea
+                  aria-label="Observações da encomenda"
+                  className="w-full rounded border p-3"
+                  placeholder="Observações da encomenda"
+                  value={observacoesEditando}
+                  onChange={(event) =>
+                    setObservacoesEditando(event.target.value)
+                  }
+                />
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => salvarEdicao(encomenda.id)}
+                    disabled={salvandoEdicaoId === encomenda.id}
+                    className="rounded bg-emerald-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {salvandoEdicaoId === encomenda.id
+                      ? "Salvando..."
+                      : "Salvar alterações"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelarEdicao}
+                    disabled={salvandoEdicaoId === encomenda.id}
+                    className="rounded bg-slate-200 px-4 py-2 text-slate-800"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <select
+                  aria-label="Alterar status da encomenda"
+                  className="rounded border p-2"
+                  value={statusSelecionado[encomenda.id] || "recebido"}
+                  onChange={(event) =>
+                    setStatusSelecionado({
+                      ...statusSelecionado,
+                      [encomenda.id]: event.target.value,
+                    })
+                  }
+                >
+                  <option value="recebido">📥 Recebido</option>
+                  <option value="procurando">🔍 Procurando</option>
+                  <option value="encontrado">✅ Encontrado</option>
+                  <option value="comprado">💳 Comprado</option>
+                  <option value="transito">🚚 Em trânsito</option>
+                  <option value="chegou">📦 Chegou</option>
+                  <option value="entregue">🎉 Entregue</option>
+                  <option value="cancelado">❌ Cancelado</option>
+                </select>
 
-                <option value="procurando">
-                  🔍 Procurando
-                </option>
+                <button
+                  type="button"
+                  onClick={() => salvarStatus(encomenda.id)}
+                  className="rounded bg-green-500 px-4 py-2 text-white"
+                >
+                  💾 Salvar Status
+                </button>
 
-                <option value="encontrado">
-                  ✅ Encontrado
-                </option>
+                <button
+                  type="button"
+                  onClick={() => iniciarEdicao(encomenda)}
+                  className="rounded bg-amber-500 px-4 py-2 text-white"
+                >
+                  Alterar encomenda
+                </button>
 
-                <option value="comprado">
-                  💳 Comprado
-                </option>
-
-                <option value="transito">
-                  🚚 Em trânsito
-                </option>
-
-                <option value="chegou">
-                  📦 Chegou
-                </option>
-
-                <option value="entregue">
-                  🎉 Entregue
-                </option>
-
-                <option value="cancelado">
-                  ❌ Cancelado
-                </option>
-              </select>
-
-              <button
-                onClick={() =>
-                  salvarStatus(
-                    encomenda.id
-                  )
-                }
-                className="bg-green-500 text-white px-4 py-2 rounded"
-              >
-                💾 Salvar Status
-              </button>
-
-              <button
-                type="button"
-                onClick={() => removerEncomenda(encomenda)}
-                disabled={excluindoEncomendaId === encomenda.id}
-                className="rounded bg-rose-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {excluindoEncomendaId === encomenda.id
-                  ? "Excluindo..."
-                  : "Excluir encomenda"}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => removerEncomenda(encomenda)}
+                  disabled={excluindoEncomendaId === encomenda.id}
+                  className="rounded bg-rose-600 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {excluindoEncomendaId === encomenda.id
+                    ? "Excluindo..."
+                    : "Excluir encomenda"}
+                </button>
+              </div>
+            )}
           </div>
         ))}
         {encomendas.length === 0 && (

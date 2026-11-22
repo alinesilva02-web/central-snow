@@ -80,6 +80,34 @@ export async function atualizarStatus(
     }
 }
 
+export async function atualizarEncomenda(
+    id: string,
+    atualizacao: Pick<
+        Encomenda,
+        | "cliente_id"
+        | "produto"
+        | "personagem"
+        | "tamanho"
+        | "quantidade"
+        | "observacoes"
+        | "data_solicitacao"
+    >
+) {
+    const { data, error } = await supabase
+        .from("encomendas")
+        .update(atualizacao)
+        .eq("id", id)
+        .select("id")
+        .single();
+
+    if (error) {
+        console.error(error);
+        throw error;
+    }
+
+    return data;
+}
+
 export async function excluirEncomenda(id: string) {
     const { data, error } = await supabase
         .from("encomendas")
